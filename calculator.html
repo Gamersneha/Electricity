@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Electricity Bill Calculator</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      background: #f4f6f9;
+      color: #333;
+    }
+
+    header {
+      background-color: #2f80ed;
+      color: white;
+      padding: 1rem;
+      text-align: center;
+      position: relative;
+    }
+
+    header label {
+      position: absolute;
+      top: 1rem;
+      right: 2rem;
+      font-size: 0.9rem;
+    }
+
+    .container {
+      padding: 2rem;
+      max-width: 1200px;
+      margin: auto;
+    }
+
+    .form-section {
+      display: flex;
+      gap: 2rem;
+      flex-wrap: wrap;
+    }
+
+    .card {
+      background: white;
+      border-radius: 10px;
+      padding: 1rem;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      flex: 1;
+      min-width: 280px;
+    }
+
+    input, select, button {
+      padding: 0.5rem;
+      margin: 0.5rem 0;
+      width: 100%;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+
+    button {
+      background-color: #2f80ed;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #1d60c1;
+    }
+
+    .appliance-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+
+    .appliance-card {
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      padding: 1rem;
+      width: 180px;
+      text-align: center;
+    }
+
+    .appliance-card img {
+      width: 80px;
+      height: 80px;
+      object-fit: contain;
+      margin-bottom: 0.5rem;
+    }
+
+    .result p, .comparison p, .tips p {
+      margin: 0.5rem 0;
+    }
+
+    .congrats {
+      color: green;
+      font-weight: bold;
+    }
+
+    .warning {
+      color: red;
+      font-weight: bold;
+    }
+
+    .dark-mode {
+      background-color: #121212;
+      color: #e0e0e0;
+    }
+
+    .dark-mode header {
+      background-color: #1e1e1e;
+      color: #fff;
+    }
+
+    .dark-mode .card {
+      background-color: #1f1f1f;
+      color: #e0e0e0;
+    }
+
+    .dark-mode input,
+    .dark-mode select,
+    .dark-mode button {
+      background-color: #2c2c2c;
+      color: #f1f1f1;
+      border: 1px solid #555;
+    }
+
+    .dark-mode button {
+      background-color: #3f8efc;
+    }
+
+    .dark-mode button:hover {
+      background-color: #2f70cc;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>💡 Electricity Bill Calculator</h1>
+  <label>
+    <input type="checkbox" id="darkModeToggle" onchange="toggleDarkMode()" />
+    🌙 Dark Mode
+  </label>
+</header>
+
+<div class="container">
+  <div class="form-section">
+    <div class="card">
+      <h2>➕ Add Appliance</h2>
+      <input type="text" id="name" placeholder="Appliance Name (e.g. Fan)" />
+      <input type="number" id="watts" placeholder="Wattage (W)" />
+      <input type="number" id="hours" placeholder="Hours per day" />
+      <button onclick="addAppliance()">Add Appliance</button>
+    </div>
+
+    <div class="card">
+      <h2>⚙️ Electricity Rate</h2>
+      <input type="number" id="unitRate" placeholder="Cost per unit (kWh) - e.g. 6.5" />
+      <button onclick="calculate()">Calculate Bill</button>
+    </div>
+  </div>
+
+  <div class="appliance-list" id="applianceList"></div>
+
+  <div class="card" id="result" style="display: none;">
+    <h2>📊 Calculation Result</h2>
+    <p><strong>Daily Usage:</strong> <span id="dailyUsage"></span> kWh</p>
+    <p><strong>Monthly Usage:</strong> <span id="monthlyUsage"></span> kWh</p>
+    <p><strong>Estimated Monthly Cost:</strong> ₹<span id="monthlyCost"></span></p>
+  </div>
+
+  <div class="card" id="comparison" style="display: none;">
+    <h2>📉 Comparison</h2>
+    <p>Previous Monthly Bill: ₹1350</p>
+    <p><strong>Current Bill:</strong> ₹<span id="currentBill"></span></p>
+    <p><strong>Difference:</strong> ₹<span id="billDifference"></span></p>
+    <p id="comparisonMessage"></p>
+  </div>
+
+  <div class="card" id="tips" style="display: none;">
+    <h2>💡 Tips</h2>
+    <p id="tipText"></p>
+  </div>
+</div>
+
+<script>
+  let appliances = [];
+
+  function getImageURL(name) {
+    const imgMap = {
+      fan: 'https://img.icons8.com/ios/100/fan.png',
+      light: 'https://img.icons8.com/ios/100/light-on.png',
+      tv: 'https://img.icons8.com/ios/100/tv.png',
+      fridge: 'https://img.icons8.com/ios/100/fridge.png',
+      ac: 'https://img.icons8.com/ios/100/air-conditioner.png',
+      computer: 'https://img.icons8.com/ios/100/computer.png',
+      heater: 'https://img.icons8.com/ios/100/heating-room.png'
+    };
+    const key = name.toLowerCase();
+    return imgMap[key] || 'https://img.icons8.com/ios/100/electrical.png';
+  }
+
+  function addAppliance() {
+    const name = document.getElementById("name").value;
+    const watts = parseFloat(document.getElementById("watts").value);
+    const hours = parseFloat(document.getElementById("hours").value);
+
+    if (!name || isNaN(watts) || isNaN(hours)) {
+      alert("Please fill all appliance fields.");
+      return;
+    }
+
+    appliances.push({ name, watts, hours });
+    displayAppliances();
+
+    document.getElementById("name").value = '';
+    document.getElementById("watts").value = '';
+    document.getElementById("hours").value = '';
+  }
+
+  function displayAppliances() {
+    const list = document.getElementById("applianceList");
+    list.innerHTML = '';
+    appliances.forEach(appliance => {
+      const card = document.createElement('div');
+      card.className = 'appliance-card';
+      card.innerHTML = `
+        <img src="${getImageURL(appliance.name)}" alt="${appliance.name}" />
+        <div><strong>${appliance.name}</strong></div>
+        <div>${appliance.watts}W × ${appliance.hours} hrs/day</div>
+      `;
+      list.appendChild(card);
+    });
+  }
+
+  function calculate() {
+    const rate = parseFloat(document.getElementById("unitRate").value);
+    if (isNaN(rate) || rate <= 0) {
+      alert("Enter valid cost per unit.");
+      return;
+    }
+
+    let totalWattsPerDay = 0;
+    appliances.forEach(appliance => {
+      totalWattsPerDay += appliance.watts * appliance.hours;
+    });
+
+    const kWhPerDay = totalWattsPerDay / 1000;
+    const kWhPerMonth = kWhPerDay * 30;
+    const costPerMonth = kWhPerMonth * rate;
+
+    document.getElementById("dailyUsage").textContent = kWhPerDay.toFixed(2);
+    document.getElementById("monthlyUsage").textContent = kWhPerMonth.toFixed(2);
+    document.getElementById("monthlyCost").textContent = costPerMonth.toFixed(2);
+    document.getElementById("currentBill").textContent = costPerMonth.toFixed(2);
+    document.getElementById("result").style.display = "block";
+
+    compareAndSuggest(costPerMonth);
+  }
+
+  function compareAndSuggest(currentBill) {
+    const prevMonth = 1350;
+    const difference = currentBill - prevMonth;
+    const diffText = (difference > 0 ? "+" : "") + difference.toFixed(2);
+    const differenceElement = document.getElementById("billDifference");
+
+    differenceElement.textContent = diffText;
+    differenceElement.style.color = difference > 0 ? 'red' : 'green';
+    document.getElementById("comparison").style.display = "block";
+
+    const message = document.getElementById("comparisonMessage");
+    const tips = document.getElementById("tipText");
+
+    if (currentBill < prevMonth) {
+      message.innerHTML = `
+        <span class="congrats">🎉 Great job! You've reduced your electricity bill by ₹${Math.abs(difference).toFixed(2)}.</span>
+      `;
+      tips.innerHTML = `
+        <ul>
+          <li>🔌 Unplug appliances when not in use</li>
+          <li>💡 Use LED bulbs instead of incandescent</li>
+          <li>🌡️ Set AC temperature to 24°C or higher</li>
+          <li>🕒 Limit high-energy usage during peak hours</li>
+          <li>📉 Use power-saving mode on devices</li>
+        </ul>
+      `;
+    } else {
+      message.innerHTML = `
+        <span class="warning">⚠️ Your bill increased by ₹${difference.toFixed(2)} this month.</span>
+      `;
+      tips.innerHTML = `
+        <ul>
+          <li>⚠️ Avoid leaving lights and fans on unnecessarily</li>
+          <li>🔥 Use geysers only when needed</li>
+          <li>💻 Turn off computers instead of sleep mode</li>
+          <li>🔋 Avoid overcharging phones/laptops</li>
+          <li>📴 Disconnect idle appliances</li>
+        </ul>
+      `;
+    }
+
+    document.getElementById("tips").style.display = "block";
+  }
+
+  function toggleDarkMode() {
+    document.body.classList.toggle("dark-mode");
+  }
+</script>
+</body>
+</html>
