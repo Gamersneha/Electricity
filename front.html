@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>PowerTrack – Electricity Usage Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --primary-color: #2f80ed;
+      --accent-color: #56ccf2;
+      --bg-light: #f9fbfd;
+      --bg-dark: #1e1e1e;
+      --text-light: #ffffff;
+      --text-dark: #333;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      margin: 0;
+      background: var(--bg-light);
+      color: var(--text-dark);
+      transition: background 0.3s, color 0.3s;
+    }
+
+    body.dark-mode {
+      background: var(--bg-dark);
+      color: var(--text-light);
+    }
+
+    header {
+      background: linear-gradient(90deg, var(--primary-color), var(--accent-color));
+      padding: 2rem 1rem;
+      text-align: center;
+      color: white;
+      position: relative;
+    }
+
+    .dark-toggle {
+      position: absolute;
+      top: 1.5rem;
+      right: 1.5rem;
+      background: white;
+      color: #222;
+      padding: 0.5rem 1rem;
+      border: none;
+      border-radius: 30px;
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+
+    body.dark-mode .dark-toggle {
+      background: #444;
+      color: white;
+    }
+
+    .container {
+      max-width: 1000px;
+      margin: auto;
+      padding: 2rem 1rem;
+    }
+
+    .card {
+      background: white;
+      border-radius: 16px;
+      padding: 2rem;
+      margin-bottom: 2rem;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+      text-align: center;
+      transition: transform 0.3s ease, background 0.3s;
+    }
+
+    body.dark-mode .card {
+      background: #2c2c2c;
+    }
+
+    .amount {
+      font-size: 2.5rem;
+      font-weight: bold;
+      color: var(--primary-color);
+    }
+
+    .compare-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1.5rem;
+      margin-top: 1rem;
+    }
+
+    .box {
+      background: white;
+      padding: 1.5rem;
+      border-radius: 12px;
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.06);
+      text-align: center;
+      transition: background 0.3s;
+    }
+
+    body.dark-mode .box {
+      background: #2c2c2c;
+    }
+
+    .box.highlight {
+      background-color: #e6f9f0;
+      border: 2px solid #27ae60;
+    }
+
+    .box.overuse {
+      background-color: #fff3f3;
+      border: 2px solid #eb5757;
+    }
+
+    body.dark-mode .box.highlight {
+      background-color: #224e3a;
+    }
+
+    body.dark-mode .box.overuse {
+      background-color: #4a1f1f;
+    }
+
+    button {
+      background: linear-gradient(to right, var(--primary-color), var(--accent-color));
+      color: white;
+      padding: 0.9rem 2rem;
+      border: none;
+      border-radius: 50px;
+      font-size: 1.1rem;
+      cursor: pointer;
+      font-weight: 600;
+      transition: background 0.3s, transform 0.3s;
+    }
+
+    button:hover {
+      background: linear-gradient(to right, #2562c1, #3498db);
+      transform: scale(1.05);
+    }
+
+    canvas {
+      max-width: 100%;
+      margin-top: 2rem;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>⚡ PowerTrack – Your Smart Electricity Dashboard</h1>
+    <button class="dark-toggle" onclick="toggleDarkMode()">🌓 Toggle Dark Mode</button>
+  </header>
+
+  <main class="container">
+    <section class="card">
+      <h2>Last Month's Bill</h2>
+      <p class="amount" id="lastMonthBill">₹1,350.00</p>
+    </section>
+
+    <section class="card">
+      <h2>📊 Weekly vs Monthly Usage</h2>
+      <div class="compare-grid">
+        <div class="box">
+          <h3>📅 This Week</h3>
+          <p id="weeklyUsage">42 kWh</p>
+        </div>
+        <div class="box">
+          <h3>🗓️ This Month</h3>
+          <p id="monthlyUsage">185 kWh</p>
+        </div>
+        <div class="box highlight" id="comparisonBox">
+          <h3>📈 Usage Trend</h3>
+          <p id="comparisonText">You're on track 👍</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>📉 Usage Overview</h2>
+      <canvas id="usageChart" height="120"></canvas>
+    </section>
+
+    <section class="cta" style="text-align: center; margin-top: 2rem;">
+      <button onclick="goToCalculator()">🧮 Calculate My Bill</button>
+    </section>
+  </main>
+
+  <script>
+    const weeklyUsage = 42;
+    const monthlyUsage = 185;
+
+    document.getElementById("weeklyUsage").textContent = `${weeklyUsage} kWh`;
+    document.getElementById("monthlyUsage").textContent = `${monthlyUsage} kWh`;
+
+    const projectedMonthly = weeklyUsage * 4;
+    const comparisonBox = document.getElementById("comparisonBox");
+    const comparisonText = document.getElementById("comparisonText");
+
+    if (projectedMonthly > monthlyUsage + 10) {
+      comparisonText.textContent = "You're overusing ⚠️";
+      comparisonBox.classList.remove("highlight");
+      comparisonBox.classList.add("overuse");
+    } else if (projectedMonthly < monthlyUsage - 10) {
+      comparisonText.textContent = "Great! You're saving 🌱";
+      comparisonBox.classList.remove("overuse");
+      comparisonBox.classList.add("highlight");
+    } else {
+      comparisonText.textContent = "You're on track 👍";
+      comparisonBox.classList.remove("overuse");
+      comparisonBox.classList.add("highlight");
+    }
+
+    function goToCalculator() {
+      window.location.href = "calculator.html";
+    }
+
+    // Chart.js - Weekly usage visualization
+    const weeklyUsageData = [42, 48, 39, 56]; // Example kWh usage per week
+
+  const ctx = document.getElementById('usageChart').getContext('2d');
+  const usageChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4'],
+      datasets: [{
+        label: 'Weekly Usage (kWh)',
+        data: weeklyUsageData,
+        backgroundColor: '#2f80ed',
+        borderRadius: 8,
+        barThickness: 40
+      }]
+    },
+    options: {
+      responsive: true,
+      scales: {
+        y: {
+          beginAtZero: true,
+          ticks: { color: getComputedStyle(document.body).color }
+        },
+        x: {
+          ticks: { color: getComputedStyle(document.body).color }
+        }
+      },
+      plugins: {
+        legend: { display: false },
+        title: {
+          display: true,
+          text: 'Electricity Usage by Week',
+          color: getComputedStyle(document.body).color,
+          font: {
+            size: 18
+          }
+        }
+      }
+    }
+  });
+
+  function toggleDarkMode() {
+    document.body.classList.toggle('dark-mode');
+    usageChart.options.scales.x.ticks.color = getComputedStyle(document.body).color;
+    usageChart.options.scales.y.ticks.color = getComputedStyle(document.body).color;
+    usageChart.options.plugins.title.color = getComputedStyle(document.body).color;
+    usageChart.update();
+  }
+  </script>
+</body>
+</html>
